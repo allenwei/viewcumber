@@ -11,10 +11,17 @@ if respond_to? :AfterStep
       if !@email.blank?
         Viewcumber.last_step_html = Viewcumber.rewrite_css_and_image_references(@email)
         @email = nil
-      elsif Capybara.page.driver.respond_to? :source
-        Viewcumber.last_step_html = Viewcumber.rewrite_css_and_image_references(Capybara.page.driver.source.to_s)
-      elsif Capybara.page.driver.respond_to? :html
-        Viewcumber.last_step_html = Viewcumber.rewrite_css_and_image_references(Capybara.page.driver.html.to_s)
+      else
+        filename = Time.now.to_i.to_s + "_" + Array.new(5) { rand(9) }.join + ".png"
+        full_path = File.join(File.expand_path("viewcumber"), 'screenshots', filename)
+        page.driver.browser.save_screenshot(full_path)
+        Viewcumber.last_step_html = <<-EOF
+        <html>
+          <body>
+            <img src="../screenshots/#{filename}">
+          </body>
+        </html>
+        EOF
       end
     rescue Exception => e
     end
@@ -43,7 +50,7 @@ class Viewcumber < Cucumber::Formatter::Json
         list
       end
       response_html.gsub!(/("|')\/(#{directories.join('|')})/, '\1public/\2')
-      response_html.gsub(/("|')http:\/\/.*\/images/, '\1public/images') 
+      response_html.gsub(/("|')http:\/\/.*\/images/, '\1public/images')
     end
   end
 
@@ -57,7 +64,7 @@ class Viewcumber < Cucumber::Formatter::Json
 
   def after_step(step)
 
-    additional_step_info = { 'html_file' => write_html_to_file(Viewcumber.last_step_html), 
+    additional_step_info = { 'html_file' => write_html_to_file(Viewcumber.last_step_html),
                              'emails' => emails_for_step(step) }
 
     current_element = @gf.feature_hash['elements'].last
@@ -86,7 +93,7 @@ class Viewcumber < Cucumber::Formatter::Json
   # Writes the given html to a file in the results directory
   # and returns the filename.
   #
-  # Filename are based on the SHA1 of the contents. This means 
+  # Filename are based on the SHA1 of the contents. This means
   # that we will only write the same html once
   def write_html_to_file(html)
     return nil unless html && html != ""
@@ -164,9 +171,14 @@ class Viewcumber < Cucumber::Formatter::Json
     @output_dir ||= File.expand_path("viewcumber")
   end
 
+  def screenshots_dir
+    @screenshots_dir ||= File.join(output_dir, "screenshots")
+  end
+
   def make_output_dir
     FileUtils.mkdir output_dir unless File.directory? output_dir
     FileUtils.mkdir results_dir unless File.directory? results_dir
+    FileUtils.mkdir screenshots_dir unless File.directory? screenshots_dir
   end
 
   def copy_app
