@@ -111,7 +111,7 @@ class Viewcumber < Cucumber::Formatter::Json
 
   def exception(exception, status)
     @exception_raised = true
-    print_exception(exception)
+    print_exception(exception, status, 0)
   end
 
   private
