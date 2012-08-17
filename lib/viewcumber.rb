@@ -3,6 +3,8 @@ require 'capybara'
 require 'digest/sha1'
 
 require 'cucumber/formatter/json'
+require 'cucumber/formatter/console'
+require 'cucumber/formatter/io'
 require 'fileutils'
 
 if respond_to? :AfterStep
@@ -29,6 +31,8 @@ if respond_to? :AfterStep
 end
 
 class Viewcumber < Cucumber::Formatter::Json
+  include Cucumber::Formatter::Console
+  attr_accessor :step_mother
 
   module GherkinObjectAttrs
     def feature_hash
@@ -59,6 +63,7 @@ class Viewcumber < Cucumber::Formatter::Json
     copy_app
     copy_public_folder
     super(step_mother, File.open(results_filename, 'w+'), options)
+    @step_mother, @io, @options = step_mother, STDOUT, options
     @gf.extend GherkinObjectAttrs
   end
 
@@ -70,6 +75,11 @@ class Viewcumber < Cucumber::Formatter::Json
     current_element = @gf.feature_hash['elements'].last
     current_step = current_element['steps'].last
     current_step.merge!(additional_step_info)
+    @exception_raised = false
+  end
+
+  def scenario_name(keyword, name, file_colon_line, source_indent)
+    print_feature_element_name(keyword, name, file_colon_line, source_indent)
   end
 
   # The JSON formatter adds the background as a feature element,
@@ -84,10 +94,53 @@ class Viewcumber < Cucumber::Formatter::Json
     super(feature)
   end
 
+  def after_features(features)
+    print_summary(features)
+  end
+
+  def step_name(keyword, step_match, status, source_indent, background, file_colon_line)
+    name_to_report = format_step(keyword, step_match, status, source_indent)
+    @io.puts name_to_report
+  end
 
 
+  def after_step_result(keyword, step_match, multiline_arg, status, exception, source_indent, background, file_colon_line)
+    @io.puts multiline_arg
+    @status = status
+  end
+
+  def exception(exception)
+    @exception_raised = true
+    @io.puts "============== Exception =============="
+    @io.puts exception.message
+    @io.puts exception.backtrace.join("\n")
+    @io.puts "======================================="
+  end
 
   private
+
+  def print_summary(features)
+    print_steps(:pending)
+    print_steps(:failed)
+    print_stats(features, @options)
+    print_snippets(@options)
+    print_passing_wip(@options)
+  end
+
+  private
+  def print_feature_element_name(keyword, name, file_colon_line, source_indent)
+    @io.puts if @scenario_indent == 6
+    names = name.empty? ? [name] : name.split("\n")
+    line = "#{keyword}: #{names[0]}"
+    @io.print(line)
+    if @options[:source]
+      line_comment = " # #{file_colon_line}"
+      @io.print(format_string(line_comment, :comment))
+    end
+    @io.puts
+    names[1..-1].each {|s| @io.puts "    #{s}"}
+    @io.flush
+  end
 
 
   # Writes the given html to a file in the results directory
