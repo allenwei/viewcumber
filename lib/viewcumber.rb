@@ -109,12 +109,9 @@ class Viewcumber < Cucumber::Formatter::Json
     @status = status
   end
 
-  def exception(exception)
+  def exception(exception, status)
     @exception_raised = true
-    @io.puts "============== Exception =============="
-    @io.puts exception.message
-    @io.puts exception.backtrace.join("\n")
-    @io.puts "======================================="
+    print_exception(exception)
   end
 
   private
