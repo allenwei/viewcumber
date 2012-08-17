@@ -3,8 +3,7 @@ require 'capybara'
 require 'digest/sha1'
 
 require 'cucumber/formatter/json'
-require 'cucumber/formatter/console'
-require 'cucumber/formatter/io'
+require 'console'
 require 'fileutils'
 
 if respond_to? :AfterStep
@@ -31,7 +30,7 @@ if respond_to? :AfterStep
 end
 
 class Viewcumber < Cucumber::Formatter::Json
-  include Cucumber::Formatter::Console
+  include Console
   attr_accessor :step_mother
 
   module GherkinObjectAttrs
@@ -62,8 +61,8 @@ class Viewcumber < Cucumber::Formatter::Json
     make_output_dir
     copy_app
     copy_public_folder
+    @step_mother, @options = step_mother, options
     super(step_mother, File.open(results_filename, 'w+'), options)
-    @step_mother, @io, @options = step_mother, STDOUT, options
     @gf.extend GherkinObjectAttrs
   end
 
@@ -75,7 +74,6 @@ class Viewcumber < Cucumber::Formatter::Json
     current_element = @gf.feature_hash['elements'].last
     current_step = current_element['steps'].last
     current_step.merge!(additional_step_info)
-    @exception_raised = false
   end
 
   def scenario_name(keyword, name, file_colon_line, source_indent)
@@ -96,16 +94,17 @@ class Viewcumber < Cucumber::Formatter::Json
 
   def after_features(features)
     print_summary(features)
+    super(features)
   end
 
   def step_name(keyword, step_match, status, source_indent, background, file_colon_line)
     name_to_report = format_step(keyword, step_match, status, source_indent)
-    @io.puts name_to_report
+    STDOUT.puts name_to_report
   end
 
 
   def after_step_result(keyword, step_match, multiline_arg, status, exception, source_indent, background, file_colon_line)
-    @io.puts multiline_arg
+    STDOUT.puts multiline_arg
     @status = status
   end
 
@@ -126,17 +125,17 @@ class Viewcumber < Cucumber::Formatter::Json
 
   private
   def print_feature_element_name(keyword, name, file_colon_line, source_indent)
-    @io.puts if @scenario_indent == 6
+    STDOUT.puts if @scenario_indent == 6
     names = name.empty? ? [name] : name.split("\n")
     line = "#{keyword}: #{names[0]}"
-    @io.print(line)
+    STDOUT.print(line)
     if @options[:source]
       line_comment = " # #{file_colon_line}"
-      @io.print(format_string(line_comment, :comment))
+      STDOUT.print(format_string(line_comment, :comment))
     end
-    @io.puts
-    names[1..-1].each {|s| @io.puts "    #{s}"}
-    @io.flush
+    STDOUT.puts
+    names[1..-1].each {|s| STDOUT.puts "    #{s}"}
+    STDOUT.flush
   end
 
 
