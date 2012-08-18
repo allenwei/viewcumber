@@ -7,6 +7,13 @@ require 'console'
 require 'fileutils'
 
 if respond_to? :AfterStep
+  Before do
+    if Capybara.current_driver == :webkit
+      page.driver.resize_window(1280, 1024)
+    else
+      page.driver.browser.manage.window.maximize
+    end
+  end
   AfterStep do |scenario|
     begin
       if !@email.blank?
@@ -15,7 +22,11 @@ if respond_to? :AfterStep
       else
         filename = Time.now.to_i.to_s + "_" + Array.new(5) { rand(9) }.join + ".png"
         full_path = File.join(File.expand_path("viewcumber"), 'screenshots', filename)
-        page.driver.browser.save_screenshot(full_path)
+        if Capybara.current_driver == :webkit
+          page.driver.render full_path
+        else
+          page.driver.browser.save_screenshot(full_path)
+        end
         Viewcumber.last_step_html = <<-EOF
         <html>
           <body>
