@@ -1,6 +1,7 @@
 require 'cucumber/formatter/ansicolor'
 require 'cucumber/formatter/duration'
 require 'cucumber/formatter/summary'
+require 'cucumber/errors'
 
 # This module contains helper methods that are used by formatters
 # that print output to the terminal.
@@ -101,7 +102,7 @@ module Console
 
     unknown_programming_language = step_mother.unknown_programming_language?
     snippets = undefined.map do |step|
-      step_name = Undefined === step.exception ? step.exception.step_name : step.name
+      step_name = Cucumber::Undefined === step.exception ? step.exception.step_name : step.name
       step_multiline_class = step.multiline_arg ? step.multiline_arg.class : nil
       snippet = @step_mother.snippet_text(step.actual_keyword, step_name, step_multiline_class)
       snippet
